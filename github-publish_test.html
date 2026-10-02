@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publish on GitHub — Interactive Walkthrough</title>
+<style>
+  /* ---------- page + sim shell ---------- */
+  html,body{margin:0;padding:0;background:#eceef3;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1f2328;}
+  .sim{max-width:1160px;height:780px;margin:16px auto;background:#fff;border-radius:14px;
+       box-shadow:0 14px 44px rgba(15,23,42,.16);overflow:hidden;display:flex;flex-direction:column;}
+
+  /* ---------- instruction bar: big, impossible to miss ---------- */
+  .taskbar{background:#0d1117;color:#fff;padding:15px 22px;display:flex;gap:16px;align-items:flex-start;flex:0 0 auto;}
+  .step-chip{background:#1f883d;color:#fff;font-weight:800;font-size:13px;padding:7px 13px;border-radius:999px;
+             white-space:nowrap;letter-spacing:.05em;margin-top:3px;flex:0 0 auto;}
+  .task-text{flex:1;min-width:0;}
+  .task-main{font-size:22px;font-weight:700;line-height:1.3;}
+  .task-main strong{color:#7bf1a8;}
+  .task-why{font-size:13.5px;color:#b6bdc7;margin-top:5px;line-height:1.45;}
+
+  /* ---------- stage ---------- */
+  .stage{flex:1;position:relative;overflow:hidden;background:#fff;}
+  .scene{position:absolute;inset:0;display:none;overflow:hidden;background:#fff;}
+  .scene.active{display:block;}
+
+  /* ---------- primary action pulse ---------- */
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(31,136,61,.55)}70%{box-shadow:0 0 0 13px rgba(31,136,61,0)}100%{box-shadow:0 0 0 0 rgba(31,136,61,0)}}
+  .pulse{animation:pulse 1.7s infinite;}
+
+  /* ---------- explanation hotspots + pop-out modal ---------- */
+  .hs{position:absolute;width:23px;height:23px;border-radius:50%;background:#fff;border:2px solid #0969da;color:#0969da;
+      font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;
+      box-shadow:0 1px 5px rgba(0,0,0,.25);z-index:6;font-family:inherit;padding:0;line-height:1;
+      overflow:hidden;--d:0s;animation:hs-breathe 2.8s ease-in-out var(--d) infinite;}
+  .hs:hover{background:#0969da;color:#fff;}
+  .hs.inline{position:relative;display:inline-flex;margin-left:8px;vertical-align:middle;}
+  .hs::after{content:"";position:absolute;top:-15%;left:-75%;width:55%;height:130%;pointer-events:none;
+      background:linear-gradient(100deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.9) 50%,rgba(255,255,255,0) 100%);
+      transform:skewX(-18deg);animation:hs-sweep 2.8s ease-in-out var(--d) infinite;}
+  @keyframes hs-breathe{0%,100%{box-shadow:0 0 0 0 rgba(9,105,218,.55),0 1px 5px rgba(0,0,0,.25);transform:scale(1);}
+      50%{box-shadow:0 0 0 9px rgba(9,105,218,0),0 1px 5px rgba(0,0,0,.25);transform:scale(1.12);}}
+  @keyframes hs-sweep{0%{left:-75%;}55%,100%{left:145%;}}
+  .overlay{position:absolute;inset:0;background:rgba(13,17,23,.58);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
+  .overlay.open{display:flex;}
+  .modal{background:#fff;border-radius:12px;max-width:470px;width:100%;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .modal h3{margin:0 0 10px;font-size:19px;color:#0d1117;}
+  .modal p{margin:0 0 20px;font-size:15.5px;line-height:1.6;color:#1f2328;}
+  .modal button{background:#1f883d;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:15px;font-weight:700;cursor:pointer;}
+  .modal button:hover{background:#1a7f37;}
+
+  /* ---------- GitHub chrome ---------- */
+  .gh-head{background:#0d1117;color:#fff;height:60px;display:flex;align-items:center;padding:0 20px;gap:18px;flex:0 0 auto;}
+  .gh-head .logo{display:flex;align-items:center;}
+  .gh-search{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:6px 12px;font-size:13.5px;width:250px;}
+  .gh-head .spacer{flex:1;}
+  .gh-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#7b61ff,#00c2a8);
+             display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;}
+  .gh-btn-green{background:#1f883d;color:#fff;border:1px solid rgba(31,35,40,.15);border-radius:6px;padding:8px 18px;
+                font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .gh-btn-green:hover{background:#1a7f37;}
+  .gh-btn-line{background:#f6f8fa;color:#1f2328;border:1px solid #d0d7de;border-radius:6px;padding:7px 16px;
+               font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .gh-btn-line:hover{background:#eef1f4;}
+  .gh-input{border:1px solid #d0d7de;border-radius:6px;padding:8px 12px;font-size:14.5px;font-family:inherit;width:100%;box-sizing:border-box;background:#fff;color:#1f2328;}
+  .gh-input:focus{outline:2px solid #0969da;border-color:#0969da;}
+  .gh-label{display:block;font-size:14.5px;font-weight:600;margin:0 0 6px;color:#1f2328;}
+  .gh-hint{font-size:13px;color:#59636e;margin-top:6px;line-height:1.45;}
+  .gh-tabs{display:flex;gap:4px;border-bottom:1px solid #d0d7de;padding:0 20px;background:#fff;}
+  .gh-tab{padding:12px 14px;font-size:14.5px;color:#1f2328;cursor:default;border-bottom:2px solid transparent;font-weight:500;}
+  .gh-tab.on{font-weight:700;border-bottom-color:#fd8c73;}
+  .gh-tab.actionable{cursor:pointer;}
+  .gh-tab.actionable:hover{background:#f6f8fa;}
+  .gh-repohead{padding:16px 24px 0;background:#f6f8fa;border-bottom:1px solid #d0d7de;}
+  .gh-reponame{font-size:20px;color:#0969da;font-weight:400;}
+  .gh-reponame strong{font-weight:600;}
+  .badge{display:inline-block;font-size:12px;font-weight:600;color:#59636e;border:1px solid #d0d7de;border-radius:999px;padding:2px 10px;margin-left:10px;vertical-align:middle;}
+  .gh-page{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* ---------- VS Code bookend scenes ---------- */
+  .vscode{display:flex;height:100%;background:#1e1e1e;}
+  .vs-side{width:215px;background:#252526;color:#ccc;padding:14px 12px;flex:0 0 auto;font-size:13.5px;}
+  .vs-side .fld{font-weight:700;color:#fff;margin-bottom:10px;font-size:13px;letter-spacing:.05em;}
+  .vs-file{padding:5px 8px;border-radius:4px;color:#ddd;}
+  .vs-file.on{background:#37373d;color:#fff;}
+  .claude-pane{flex:1;background:#faf6ec;padding:34px 44px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
+  .claude-msg{font-size:16.5px;line-height:1.65;color:#2b2620;margin:0 0 16px;max-width:640px;}
+  .claude-msg.user{background:#fff;border:1px solid #e3dccb;border-radius:12px;padding:12px 18px;align-self:flex-start;}
+  .claude-tag{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.06em;color:#8a6d3b;margin-bottom:8px;}
+  .big-cta{background:#1f883d;color:#fff;border:none;border-radius:10px;padding:14px 30px;font-size:17px;font-weight:700;cursor:pointer;margin-top:14px;font-family:inherit;align-self:flex-start;}
+  .big-cta:hover{background:#1a7f37;}
+  .check-list{list-style:none;margin:18px 0 0;padding:0;max-width:640px;}
+  .check-list li{font-size:16px;line-height:1.5;color:#2b2620;margin-bottom:12px;padding-left:34px;position:relative;}
+  .check-list li::before{content:"✓";position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:#1f883d;color:#fff;
+                        font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+
+  /* ---------- misc ---------- */
+  .center-col{max-width:560px;margin:0 auto;padding:44px 24px;}
+  .login-card{border:1px solid #d0d7de;border-radius:8px;background:#f6f8fa;padding:22px;margin-top:18px;}
+  .kbd-hint{font-size:12.5px;color:#59636e;}
+  .file-chip{display:inline-flex;align-items:center;gap:8px;background:#ddf4ff;border:1px solid #54aeff;color:#0550ae;
+             border-radius:6px;padding:8px 14px;font-size:14.5px;font-weight:600;}
+  .banner-live{background:#dafbe1;border:1px solid #1f883d;border-radius:8px;padding:16px 20px;font-size:15.5px;color:#1a4d2e;}
+  .banner-live a{color:#0969da;font-weight:700;}
+  .mini-browser{border:1px solid #d0d7de;border-radius:10px;overflow:hidden;background:#fff;}
+  .mini-urlbar{background:#f6f8fa;border-bottom:1px solid #d0d7de;padding:10px 16px;font-size:13.5px;color:#59636e;display:flex;gap:8px;align-items:center;}
+  .mini-page{padding:44px 20px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="sim" id="sim">
+
+  <!-- instruction bar -->
+  <div class="taskbar">
+    <div class="step-chip" id="stepChip">STEP 1 OF 9</div>
+    <div class="task-text">
+      <div class="task-main" id="taskMain"></div>
+      <div class="task-why" id="taskWhy"></div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <!-- ============ SCENE 0 : VS Code intro (explained) ============ -->
+    <div class="scene" id="scene-s0" data-step="1"
+         data-task="Read how this works, then click <strong>Start the GitHub walkthrough</strong>."
+         data-why="Your project already passed the safety sweep — now it needs a public home.">
+      <div class="vscode">
+        <div class="vs-side">
+          <div class="fld">EXPLORER</div>
+          <div style="font-weight:700;margin-bottom:6px;">▾ my-site</div>
+          <div class="vs-file on">&lt;&gt; index.html</div>
+          <div class="vs-file">🎨 style.css</div>
+          <div class="vs-file">📜 script.js</div>
+        </div>
+        <div class="claude-pane">
+          <div class="claude-tag">CLAUDE</div>
+          <p class="claude-msg user">"publish it on my GitHub"</p>
+          <p class="claude-msg">Good timing — your project passed the safety sweep, so it's ready to go public. Here's the split:</p>
+          <p class="claude-msg"><strong>From here in VS Code</strong>, your files are already prepared. <strong>On the GitHub website</strong>, you'll sign in, create a new repository, and switch on Pages — that's the part we're about to walk through together, step by step.</p>
+          <p class="claude-msg">Then we come back here to check your live link.</p>
+          <button class="big-cta pulse" data-goto="s1">Start the GitHub walkthrough →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 1 : GitHub login (simulated) ============ -->
+    <div class="scene" id="scene-s1" data-step="2"
+         data-task="Click the green <strong>Sign in</strong> button."
+         data-why="GitHub needs to know it's you before you can create anything. (Demo account — nothing real.)">
+      <div class="gh-page" style="align-items:center;background:#fff;">
+        <div class="center-col" style="position:relative;">
+          <div style="text-align:center;margin-bottom:6px;">
+            <svg width="46" height="46" viewBox="0 0 32 32" aria-label="GitHub logo"><path d="M9 11 L6.5 3.5 L13.5 7.5 Z" fill="#1f2328"/><path d="M23 11 L25.5 3.5 L18.5 7.5 Z" fill="#1f2328"/><circle cx="16" cy="18" r="10.5" fill="#1f2328"/></svg>
+          </div>
+          <h1 style="text-align:center;font-size:24px;font-weight:400;margin:8px 0 4px;">Sign in to GitHub</h1>
+          <div class="login-card" style="position:relative;">
+            <label class="gh-label" for="loginUser">Username or email address</label>
+            <input class="gh-input" id="loginUser" value="demo-learner" readonly style="margin-bottom:16px;background:#fff;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;">
+              <label class="gh-label" for="loginPass" style="margin:0;">Password</label>
+              <a href="#" onclick="return false" style="font-size:13px;color:#0969da;text-decoration:none;">Forgot password?</a>
+            </div>
+            <input class="gh-input" id="loginPass" type="password" value="demopassword123" readonly style="margin-top:6px;background:#fff;">
+            <button class="gh-btn-green pulse" data-goto="s2" style="width:100%;margin-top:20px;padding:10px;">Sign in</button>
+          </div>
+          <div style="border:1px solid #d0d7de;border-radius:8px;padding:16px;text-align:center;margin-top:16px;font-size:14.5px;">
+            New to GitHub? <a href="#" onclick="return false" style="color:#0969da;text-decoration:none;">Create an account</a>
+            <button class="hs inline" data-tip-title="No account yet?" data-tip-body="That's fine — creating a GitHub account is free and takes about two minutes. In real life you'd click 'Create an account' first, then come back here to sign in.">i</button>
+          </div>
+          <div style="text-align:center;margin-top:28px;font-size:12.5px;color:#59636e;">
+            <span style="margin:0 10px;">Terms</span><span style="margin:0 10px;">Privacy</span><span style="margin:0 10px;">Security</span><span style="margin:0 10px;">Contact</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 2 : dashboard → New repository (simulated) ============ -->
+    <div class="scene" id="scene-s2" data-step="3"
+         data-task="Click the green <strong>New</strong> button."
+         data-why="Every project on GitHub lives in a repository — you're about to create one for your site.">
+      <div class="gh-page">
+        <div class="gh-head">
+          <span class="logo"><svg width="32" height="32" viewBox="0 0 32 32"><path d="M9 11 L6.5 3.5 L13.5 7.5 Z" fill="#fff"/><path d="M23 11 L25.5 3.5 L18.5 7.5 Z" fill="#fff"/><circle cx="16" cy="18" r="10.5" fill="#fff"/></svg></span>
+          <span style="font-weight:600;font-size:14.5px;">Dashboard</span>
+          <span class="gh-search">Type <span style="border:1px solid #6e7681;border-radius:4px;padding:0 5px;font-size:12px;">/</span> to search</span>
+          <button class="hs inline" data-tip-title="The search bar" data-tip-body="Searches all of GitHub — code, people, projects. You won't need it for publishing your site.">i</button>
+          <span class="spacer"></span>
+          <span style="font-size:14px;color:#c9d1d9;">🔔</span>
+          <span class="gh-avatar">D</span>
+        </div>
+        <div style="display:flex;flex:1;overflow:hidden;">
+          <div style="width:300px;border-right:1px solid #d0d7de;background:#f6f8fa;padding:20px;flex:0 0 auto;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+              <span class="gh-avatar">D</span>
+              <span style="font-weight:600;font-size:15px;">demo-learner</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-weight:600;font-size:14.5px;">Top repositories</span>
+              <button class="gh-btn-green pulse" data-goto="s3" style="padding:5px 14px;font-size:13.5px;">New</button>
+            </div>
+            <input class="gh-input" placeholder="Find a repository…" readonly style="font-size:13.5px;">
+            <div style="margin-top:14px;font-size:14px;color:#59636e;">You don't have any repositories yet.</div>
+          </div>
+          <div style="flex:1;padding:28px;overflow:hidden;position:relative;">
+            <h2 style="font-size:21px;font-weight:400;margin:0 0 14px;">Home</h2>
+            <div style="border:1px solid #d0d7de;border-radius:8px;padding:18px;margin-bottom:14px;background:#fff;">
+              <div style="font-weight:600;margin-bottom:6px;">📌 Suggested for you</div>
+              <div style="font-size:14px;color:#59636e;">Updates from people and projects you follow will appear here.</div>
+            </div>
+            <div style="border:1px solid #d0d7de;border-radius:8px;padding:18px;background:#fff;opacity:.75;">
+              <div style="font-weight:600;margin-bottom:6px;">Trending repositories</div>
+              <div style="font-size:14px;color:#59636e;">See what the GitHub community is excited about today.</div>
+            </div>
+            <button class="hs" data-tip-title="Your news feed" data-tip-body="This is GitHub's home page — a feed of activity, like a social network for code. Ignore it for now; it has nothing to do with publishing your site." style="top:34px;right:34px;">i</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 3 : create repository form (simulated) ============ -->
+    <div class="scene" id="scene-s3" data-step="4"
+         data-task="Click <strong>Create repository</strong>."
+         data-why="The name is filled in and Public is selected — that's everything this page needs from you.">
+      <div class="gh-page">
+        <div class="gh-head">
+          <span class="logo"><svg width="32" height="32" viewBox="0 0 32 32"><path d="M9 11 L6.5 3.5 L13.5 7.5 Z" fill="#fff"/><path d="M23 11 L25.5 3.5 L18.5 7.5 Z" fill="#fff"/><circle cx="16" cy="18" r="10.5" fill="#fff"/></svg></span>
+          <span style="font-weight:600;font-size:14.5px;">Dashboard</span>
+          <span class="spacer"></span>
+          <span class="gh-avatar">D</span>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:16px 40px;position:relative;">
+          <h1 style="font-size:23px;font-weight:400;margin:0 0 4px;padding-bottom:10px;border-bottom:1px solid #d0d7de;">Create a new repository</h1>
+          <p style="font-size:13.5px;color:#59636e;margin:8px 0 14px;">A repository contains all project files, including the revision history.</p>
+          <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:16px;max-width:640px;">
+            <div style="flex:0 0 200px;position:relative;">
+              <label class="gh-label">Owner <span style="color:#cf222e;">*</span></label>
+              <div class="gh-input" style="background:#f6f8fa;color:#59636e;">👤 demo-learner ▾</div>
+              <button class="hs" data-tip-title="Owner" data-tip-body="Who the repository belongs to. Yours will show your own username here." style="top:-6px;right:-6px;">i</button>
+            </div>
+            <div style="font-size:22px;color:#59636e;padding-bottom:8px;">/</div>
+            <div style="flex:1;">
+              <label class="gh-label" for="repoName">Repository name <span style="color:#cf222e;">*</span></label>
+              <input class="gh-input" id="repoName" value="my-first-site">
+            </div>
+          </div>
+          <div class="gh-hint" style="margin:-8px 0 16px;max-width:640px;">Great repository names are short and memorable.</div>
+          <div style="max-width:640px;margin-bottom:16px;">
+            <label class="gh-label" for="repoDesc">Description <span style="font-weight:400;color:#59636e;">(optional)</span></label>
+            <input class="gh-input" id="repoDesc" placeholder="">
+          </div>
+          <div style="border-top:1px solid #d0d7de;border-bottom:1px solid #d0d7de;padding:10px 0;max-width:640px;position:relative;">
+            <label style="display:flex;gap:10px;margin-bottom:10px;cursor:default;">
+              <input type="radio" checked disabled style="margin-top:4px;">
+              <span><strong style="font-size:14.5px;">Public</strong><br><span style="font-size:13.5px;color:#59636e;">Anyone on the internet can see this repository. You choose who can commit.</span></span>
+            </label>
+            <label style="display:flex;gap:10px;cursor:default;opacity:.75;">
+              <input type="radio" disabled style="margin-top:4px;">
+              <span><strong style="font-size:14.5px;">Private</strong><br><span style="font-size:13.5px;color:#59636e;">You choose who can see and commit to this repository.</span></span>
+            </label>
+            <button class="hs" data-tip-title="Keep it Public" data-tip-body="Free GitHub Pages sites must be public — that's how the world can visit your page. Private is for work you don't want anyone to see." style="top:8px;right:0;">i</button>
+          </div>
+          <div style="padding:10px 0;max-width:640px;position:relative;">
+            <div style="font-weight:600;font-size:14.5px;margin-bottom:8px;">Initialize this repository with:</div>
+            <label style="display:flex;gap:10px;font-size:14.5px;align-items:center;margin-bottom:8px;">
+              <input type="checkbox" checked disabled> Add a README file
+            </label>
+            <button class="hs" data-tip-title="README, .gitignore, license" data-tip-body="A README is your project's front page — nice to have. The .gitignore and license options don't matter for your first site; leaving them off is fine." style="top:8px;right:0;">i</button>
+            <div style="font-size:14.5px;color:#59636e;">Add .gitignore: <span style="border:1px solid #d0d7de;border-radius:6px;padding:4px 10px;background:#f6f8fa;">None ▾</span></div>
+          </div>
+          <div style="max-width:640px;text-align:right;margin-top:6px;">
+            <button class="gh-btn-green pulse" id="createRepoBtn" style="padding:10px 26px;font-size:15.5px;">Create repository</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 4 : empty repo → upload (simulated) ============ -->
+    <div class="scene" id="scene-s4" data-step="5"
+         data-task="Click <strong>uploading an existing file</strong>."
+         data-why="Your project files are on your computer — this sends them up into the repository.">
+      <div class="gh-page">
+        <div class="gh-repohead">
+          <div style="display:flex;align-items:center;">
+            <svg width="20" height="20" viewBox="0 0 16 16" style="margin-right:8px;"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="#59636e" stroke-width="1.6"/></svg>
+            <span class="gh-reponame"><span class="js-user">demo-learner</span> / <strong class="js-repo">my-first-site</strong></span>
+            <span class="badge">Public</span>
+            <span style="flex:1;"></span>
+            <button class="gh-btn-line" style="font-size:13px;">⭐ Star</button>
+          </div>
+          <div class="gh-tabs" style="border-bottom:none;margin-top:8px;">
+            <span class="gh-tab on">⚙ Code</span><span class="gh-tab">Issues</span><span class="gh-tab">Pull requests</span>
+            <span class="gh-tab">Actions</span><span class="gh-tab">Projects</span><span class="gh-tab">Wiki</span>
+            <span class="gh-tab">Security</span><span class="gh-tab">Insights</span><span class="gh-tab">Settings</span>
+            <button class="hs inline" data-tip-title="These tabs" data-tip-body="Code, Issues, Pull requests and the rest are team tools for bigger projects. For publishing your site, you only need Code (where you are) and Settings (coming up).">i</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:26px 40px;position:relative;">
+          <h2 style="font-size:20px;font-weight:600;margin:0 0 14px;">Quick setup <span style="font-weight:400;color:#59636e;font-size:15px;">— if you've done this kind of thing before</span>
+            <button class="hs inline" data-tip-title="HTTPS / SSH?" data-tip-body="Two technical ways to connect your computer's code to GitHub. You don't need either today — we're moving files through the website instead.">i</button>
+          </h2>
+          <div style="display:flex;gap:0;margin-bottom:8px;max-width:640px;">
+            <span style="border:1px solid #d0d7de;border-bottom:none;border-radius:6px 6px 0 0;padding:7px 16px;font-size:14px;font-weight:600;background:#fff;">HTTPS</span>
+            <span style="padding:7px 16px;font-size:14px;color:#59636e;">SSH</span>
+          </div>
+          <div style="display:flex;gap:8px;max-width:640px;margin-bottom:18px;">
+            <input class="gh-input" readonly value="https://github.com/demo-learner/my-first-site.git" style="font-family:monospace;font-size:13px;background:#f6f8fa;">
+            <button class="gh-btn-line">⧉</button>
+          </div>
+          <div style="font-size:14.5px;color:#59636e;margin-bottom:14px;max-width:640px;position:relative;">
+            …or create a new repository on the command line<br>
+            …or push an existing repository from the command line
+            <button class="hs" data-tip-title="Command line?" data-tip-body="Instructions for people who use the terminal. Skip them — the website path you're on does the same job with clicks." style="top:0;right:0;">i</button>
+          </div>
+          <div style="border:1px solid #d0d7de;border-radius:8px;background:#f6f8fa;padding:20px 22px;max-width:640px;font-size:15px;position:relative;">
+            Get started by <a href="#" onclick="return false" style="color:#0969da;">creating a new file</a> or
+            <a href="#" id="uploadLink" class="pulse" style="color:#0969da;font-weight:700;display:inline-block;border:2.5px solid #1f883d;border-radius:8px;padding:7px 16px;background:#f0fff4;text-decoration:none;">uploading an existing file</a>.<br>
+            <span style="color:#59636e;font-size:14px;">We recommend every repository include a README, LICENSE, and .gitignore.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 5 : upload files (simulated) ============ -->
+    <div class="scene" id="scene-s5" data-step="6"
+         data-task="Click <strong>choose your files</strong>, then click <strong>Commit changes</strong>."
+         data-why="Two clicks: first you pick the files, then you save them into the repository.">
+      <div class="gh-page">
+        <div class="gh-repohead">
+          <div style="display:flex;align-items:center;">
+            <span class="gh-reponame"><span class="js-user">demo-learner</span> / <strong class="js-repo">my-first-site</strong></span>
+            <span class="badge">Public</span>
+          </div>
+          <div class="gh-tabs" style="border-bottom:none;margin-top:8px;">
+            <span class="gh-tab on">⚙ Code</span><span class="gh-tab">Issues</span><span class="gh-tab">Pull requests</span>
+            <span class="gh-tab">Actions</span><span class="gh-tab">Projects</span><span class="gh-tab">Wiki</span>
+            <span class="gh-tab">Security</span><span class="gh-tab">Insights</span><span class="gh-tab">Settings</span>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:22px 40px;position:relative;">
+          <div style="font-size:15px;margin-bottom:14px;"><strong class="js-repo">my-first-site</strong> <span style="color:#59636e;">/ Upload files</span></div>
+          <div id="dropZone" style="border:2px dashed #d0d7de;border-radius:8px;background:#f6f8fa;padding:34px;text-align:center;max-width:720px;position:relative;">
+            <div id="dropEmpty">
+              <div style="font-size:16px;font-weight:600;margin-bottom:6px;">Drag files here to add them to your repository</div>
+              <div style="font-size:15px;">or <a href="#" id="chooseFiles" style="color:#0969da;font-weight:700;">choose your files</a></div>
+            </div>
+            <div id="dropFull" style="display:none;">
+              <span class="file-chip">📄 index.html <span style="color:#1a7f37;">✓ ready</span></span>
+              <div class="gh-hint">In real life you'd select all your project files here.</div>
+            </div>
+          </div>
+          <div id="commitBox" style="display:none;max-width:720px;margin-top:18px;position:relative;">
+            <h3 style="font-size:17px;margin:0 0 10px;">Commit changes
+              <button class="hs inline" data-tip-title="“Commit changes”?" data-tip-body="That's just GitHub's word for “save”. Clicking it saves your files into the repository — nothing scary, nothing to memorize.">i</button>
+            </h3>
+            <input class="gh-input" value="Add files via upload" readonly style="margin-bottom:10px;">
+            <label style="display:flex;gap:8px;font-size:14.5px;align-items:center;">
+              <input type="radio" checked disabled> Commit directly to the <span style="font-family:monospace;background:#eef1f4;padding:1px 7px;border-radius:4px;">main</span> branch
+            </label>
+            <div style="margin-top:14px;text-align:right;">
+              <button class="gh-btn-green pulse" data-goto="s6" style="padding:10px 26px;font-size:15.5px;">Commit changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 6 : Settings → Pages (simulated, 3 sub-steps) ============ -->
+    <div class="scene" id="scene-s6" data-step="7"
+         data-task="Click the <strong>Settings</strong> tab."
+         data-why="Pages — the switch that turns your files into a website — lives in Settings.">
+      <div class="gh-page">
+        <!-- pane A : repo page, click Settings tab -->
+        <div class="s6pane" id="s6a" style="position:absolute;inset:0;display:flex;flex-direction:column;">
+          <div class="gh-repohead">
+            <div style="display:flex;align-items:center;">
+              <span class="gh-reponame"><span class="js-user">demo-learner</span> / <strong class="js-repo">my-first-site</strong></span>
+              <span class="badge">Public</span>
+            </div>
+            <div class="gh-tabs" style="border-bottom:none;margin-top:8px;">
+              <span class="gh-tab on">⚙ Code</span><span class="gh-tab">Issues</span><span class="gh-tab">Pull requests</span>
+              <span class="gh-tab">Actions</span><span class="gh-tab">Projects</span><span class="gh-tab">Wiki</span>
+              <span class="gh-tab">Security</span><span class="gh-tab">Insights</span>
+              <span class="gh-tab actionable pulse" id="settingsTab" style="border:2px solid #1f883d;border-radius:8px 8px 0 0;font-weight:700;">Settings</span>
+            </div>
+          </div>
+          <div style="flex:1;padding:22px 40px;">
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid #d0d7de;border-radius:8px;padding:12px 16px;margin-bottom:12px;background:#fff;max-width:720px;">
+              <span class="gh-avatar" style="width:26px;height:26px;font-size:12px;">D</span>
+              <span style="font-size:14px;"><strong>demo-learner</strong> <span style="color:#59636e;">Add files via upload</span></span>
+              <span style="flex:1;"></span><span class="kbd-hint">just now</span>
+            </div>
+            <div style="border:1px solid #d0d7de;border-radius:8px;max-width:720px;background:#fff;">
+              <div style="padding:12px 16px;border-bottom:1px solid #d0d7de;font-size:14.5px;">📄 index.html</div>
+              <div style="padding:12px 16px;font-size:14.5px;">📄 README.md</div>
+            </div>
+            <div class="gh-hint" style="margin-top:10px;">Your files are in. Now let's turn them into a website.</div>
+          </div>
+        </div>
+        <!-- pane B : settings page, click Pages -->
+        <div class="s6pane" id="s6b" style="position:absolute;inset:0;display:none;">
+          <div class="gh-head">
+            <span class="logo"><svg width="32" height="32" viewBox="0 0 32 32"><path d="M9 11 L6.5 3.5 L13.5 7.5 Z" fill="#fff"/><path d="M23 11 L25.5 3.5 L18.5 7.5 Z" fill="#fff"/><circle cx="16" cy="18" r="10.5" fill="#fff"/></svg></span>
+            <span class="gh-reponame" style="color:#fff;"><span class="js-user">demo-learner</span> / <strong class="js-repo">my-first-site</strong></span>
+          </div>
+          <div style="display:flex;flex:1;overflow:hidden;">
+            <div style="width:260px;border-right:1px solid #d0d7de;background:#f6f8fa;padding:16px 0;flex:0 0 auto;font-size:14.5px;">
+              <div style="padding:8px 20px;font-weight:700;">General</div>
+              <div style="padding:8px 20px;color:#59636e;">Access</div>
+              <div style="padding:8px 20px;color:#59636e;">Collaborators</div>
+              <div style="padding:10px 20px 6px;font-size:12.5px;color:#59636e;font-weight:700;">Code and automation</div>
+              <div id="pagesRow" class="pulse" style="padding:8px 20px;font-weight:700;color:#0969da;background:#fff;border-left:3px solid #0969da;cursor:pointer;">Pages</div>
+              <div style="padding:8px 20px;color:#59636e;">Environments</div>
+              <div style="padding:8px 20px;color:#59636e;">Codespaces</div>
+            </div>
+            <div style="flex:1;padding:28px 36px;">
+              <h2 style="font-size:22px;font-weight:400;margin:0 0 8px;">General</h2>
+              <p style="color:#59636e;font-size:14.5px;">Repository settings live here. The one you want is <strong>Pages</strong>, in the menu on the left.</p>
+            </div>
+          </div>
+        </div>
+        <!-- pane C : Pages form, click Save -->
+        <div class="s6pane" id="s6c" style="position:absolute;inset:0;display:none;">
+          <div class="gh-head">
+            <span class="logo"><svg width="32" height="32" viewBox="0 0 32 32"><path d="M9 11 L6.5 3.5 L13.5 7.5 Z" fill="#fff"/><path d="M23 11 L25.5 3.5 L18.5 7.5 Z" fill="#fff"/><circle cx="16" cy="18" r="10.5" fill="#fff"/></svg></span>
+            <span class="gh-reponame" style="color:#fff;"><span class="js-user">demo-learner</span> / <strong class="js-repo">my-first-site</strong></span>
+          </div>
+          <div style="display:flex;flex:1;overflow:hidden;">
+            <div style="width:260px;border-right:1px solid #d0d7de;background:#f6f8fa;padding:16px 0;flex:0 0 auto;font-size:14.5px;">
+              <div style="padding:8px 20px;color:#59636e;">General</div>
+              <div style="padding:10px 20px 6px;font-size:12.5px;color:#59636e;font-weight:700;">Code and automation</div>
+              <div style="padding:8px 20px;font-weight:700;color:#0969da;background:#fff;border-left:3px solid #0969da;">Pages</div>
+            </div>
+            <div style="flex:1;padding:28px 36px;position:relative;">
+              <h2 style="font-size:22px;font-weight:400;margin:0 0 16px;">GitHub Pages</h2>
+              <h3 style="font-size:16px;margin:0 0 10px;">Build and deployment</h3>
+              <div style="max-width:560px;position:relative;">
+                <label class="gh-label">Source</label>
+                <div class="gh-input" style="background:#f6f8fa;color:#1f2328;margin-bottom:14px;">Deploy from a branch</div>
+                <button class="hs" data-tip-title="“Deploy from a branch”?" data-tip-body="Plain version: publish the files on your main branch as a website. This is the option you want — it's already selected." style="top:0;right:-34px;">i</button>
+                <label class="gh-label">Branch</label>
+                <div style="display:flex;gap:10px;margin-bottom:18px;">
+                  <div class="gh-input" style="background:#f6f8fa;">main ▾</div>
+                  <div class="gh-input" style="background:#f6f8fa;">/ (root) ▾</div>
+                  <button class="hs inline" data-tip-title="Leave these alone" data-tip-body="“main” is your project's main copy and “/ (root)” means the top level of your files — where your index.html sits. Both are already correct." style="align-self:center;">i</button>
+                </div>
+                <button class="gh-btn-green pulse" data-goto="s7" style="padding:9px 24px;font-size:15px;">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 7 : site is live (simulated) ============ -->
+    <div class="scene" id="scene-s7" data-step="8"
+         data-task="Click <strong>Visit site</strong> to see your live page."
+         data-why="This is your public link — the one you'll share with the world.">
+      <div class="gh-page">
+        <div class="gh-head">
+          <span class="logo"><svg width="32" height="32" viewBox="0 0 32 32"><path d="M9 11 L6.5 3.5 L13.5 7.5 Z" fill="#fff"/><path d="M23 11 L25.5 3.5 L18.5 7.5 Z" fill="#fff"/><circle cx="16" cy="18" r="10.5" fill="#fff"/></svg></span>
+          <span class="gh-reponame" style="color:#fff;"><span class="js-user">demo-learner</span> / <strong class="js-repo">my-first-site</strong></span>
+          <span class="spacer"></span>
+          <span class="gh-avatar">D</span>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:30px 44px;position:relative;">
+          <div id="liveBanner" class="banner-live" style="max-width:760px;position:relative;">
+            🎉 Your site is live at <a href="#" onclick="return false" class="js-url">https://demo-learner.github.io/my-first-site/</a>
+            <button class="hs" data-tip-title="Your public address" data-tip-body="Anyone with this link can visit your page — no GitHub account needed. This is what “hosting” means: your files now have a public home." style="top:12px;right:12px;">i</button>
+            <div style="margin-top:12px;"><button class="gh-btn-green pulse" id="visitSiteBtn" style="padding:9px 24px;font-size:15px;">Visit site</button></div>
+          </div>
+          <div id="livePreview" style="display:none;max-width:760px;margin-top:18px;">
+            <div class="mini-browser">
+              <div class="mini-urlbar">🔒 <span class="js-url" style="font-weight:600;color:#1f2328;">https://demo-learner.github.io/my-first-site/</span>
+                <span style="flex:1;"></span>
+                <button class="gh-btn-line" id="copyLinkBtn" style="font-size:13px;padding:5px 14px;">⧉ Copy link</button>
+              </div>
+              <div class="mini-page">
+                <div style="font-size:30px;margin-bottom:10px;">🏡</div>
+                <div style="font-size:22px;font-weight:700;margin-bottom:8px;">Hello from my site!</div>
+                <div style="font-size:15px;color:#59636e;">This is your <span style="font-family:monospace;">index.html</span>, live on the internet.</div>
+              </div>
+            </div>
+            <div style="margin-top:16px;text-align:right;">
+              <button class="big-cta pulse" data-goto="s8" style="margin-top:0;">Finish →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCENE 8 : VS Code outro (explained) ============ -->
+    <div class="scene" id="scene-s8" data-step="9"
+         data-task="You're done. Read the checklist, then click <strong>Finish</strong>."
+         data-why="Back in VS Code — here's how you know it worked.">
+      <div class="vscode" id="outroMain" style="height:100%;">
+        <div class="vs-side">
+          <div class="fld">EXPLORER</div>
+          <div style="font-weight:700;margin-bottom:6px;">▾ my-site</div>
+          <div class="vs-file on">&lt;&gt; index.html</div>
+          <div class="vs-file">🎨 style.css</div>
+          <div class="vs-file">📜 script.js</div>
+        </div>
+        <div class="claude-pane">
+          <div class="claude-tag">CLAUDE</div>
+          <p class="claude-msg">Your site is live. Quick verify before you celebrate:</p>
+          <ul class="check-list">
+            <li>Open your link — does your page load?</li>
+            <li>Your files now live at <span style="font-family:monospace;">github.com/demo-learner/<span class="js-repo">my-first-site</span></span> too.</li>
+            <li>Remember: run the safety sweep <strong>before every publish</strong>, not just the first one.</li>
+          </ul>
+          <button class="big-cta pulse" id="finishBtn">Finish 🎉</button>
+        </div>
+      </div>
+      <div id="donePanel" style="display:none;height:100%;align-items:center;justify-content:center;flex-direction:column;text-align:center;background:#faf6ec;">
+        <div style="font-size:56px;margin-bottom:12px;">🎉</div>
+        <div style="font-size:28px;font-weight:800;color:#1f2328;margin-bottom:10px;">Published!</div>
+        <div style="font-size:16.5px;color:#59636e;max-width:480px;line-height:1.6;margin-bottom:24px;">
+          You signed in, created a repository, uploaded your files, switched on Pages, and shared your link — the whole process, safely.
+        </div>
+        <button class="gh-btn-line" id="restartBtn" style="font-size:15px;padding:10px 24px;">↻ Run it again</button>
+      </div>
+    </div>
+
+  </div><!-- /stage -->
+
+  <!-- pop-out explanation modal -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3 id="modalTitle"></h3>
+      <p id="modalBody"></p>
+      <button id="modalClose">Got it</button>
+    </div>
+  </div>
+
+</div><!-- /sim -->
+
+<script>
+(function(){
+  "use strict";
+  var TOTAL = 9;
+  function $(s,r){ return (r||document).querySelector(s); }
+  function $all(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+
+  /* ---------- instruction bar ---------- */
+  function setBar(step, taskHTML, why){
+    $("#stepChip").textContent = "STEP " + step + " OF " + TOTAL;
+    $("#taskMain").innerHTML = taskHTML;
+    $("#taskWhy").textContent = why || "";
+  }
+
+  /* ---------- scene manager ---------- */
+  function showScene(id){
+    $all(".scene").forEach(function(el){ el.classList.remove("active"); });
+    var sc = document.getElementById("scene-"+id);
+    if(!sc) return;
+    sc.classList.add("active");
+    setBar(sc.getAttribute("data-step"), sc.getAttribute("data-task"), sc.getAttribute("data-why"));
+    if(id==="s6"){ s6pane("s6a", "Click the <strong>Settings</strong> tab.", "Pages — the switch that turns your files into a website — lives in Settings."); }
+    if(id==="s5"){ resetUpload(); }
+  }
+
+  /* ---------- scene 6 sub-steps ---------- */
+  function s6pane(paneId, taskHTML, why){
+    $all(".s6pane").forEach(function(el){ el.style.display="none"; });
+    document.getElementById(paneId).style.display="flex";
+    if(paneId==="s6a") document.getElementById(paneId).style.display="flex";
+    setBar("7", taskHTML, why);
+  }
+
+  /* ---------- scene 5 two-phase ---------- */
+  function resetUpload(){
+    $("#dropEmpty").style.display="block";
+    $("#dropFull").style.display="none";
+    $("#commitBox").style.display="none";
+    var sc=$("#scene-s5");
+    setBar(sc.getAttribute("data-step"), sc.getAttribute("data-task"), sc.getAttribute("data-why"));
+  }
+
+  /* ---------- repo name → URL ---------- */
+  function sanitize(v){
+    v=(v||"").trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9._-]/g,"");
+    return v || "my-first-site";
+  }
+  function applyRepoName(){
+    var name = sanitize($("#repoName").value);
+    $all(".js-repo").forEach(function(el){ el.textContent=name; });
+    $all(".js-url").forEach(function(el){ el.textContent="https://demo-learner.github.io/"+name+"/"; });
+  }
+
+  /* ---------- modal ---------- */
+  function openTip(title, body){
+    $("#modalTitle").textContent=title;
+    $("#modalBody").textContent=body;
+    $("#overlay").classList.add("open");
+  }
+  function closeTip(){ $("#overlay").classList.remove("open"); }
+
+  /* ---------- wiring ---------- */
+  document.addEventListener("click", function(e){
+    var goto=e.target.closest("[data-goto]");
+    if(goto){ showScene(goto.getAttribute("data-goto")); return; }
+    var hs=e.target.closest(".hs");
+    if(hs){ openTip(hs.getAttribute("data-tip-title"), hs.getAttribute("data-tip-body")); return; }
+  });
+  $("#modalClose").addEventListener("click", closeTip);
+  $("#overlay").addEventListener("click", function(e){ if(e.target===this) closeTip(); });
+
+  $("#createRepoBtn").addEventListener("click", function(){ applyRepoName(); showScene("s4"); });
+  var uploadLink=$("#uploadLink");
+  if(uploadLink){ uploadLink.addEventListener("click", function(e){ e.preventDefault(); showScene("s5"); }); }
+  $("#chooseFiles").addEventListener("click", function(e){
+    e.preventDefault();
+    $("#dropEmpty").style.display="none";
+    $("#dropFull").style.display="block";
+    $("#commitBox").style.display="block";
+    setBar("6", "Now click <strong>Commit changes</strong>.", "That's GitHub's word for “save” — it stores your files in the repository.");
+  });
+  $("#settingsTab").addEventListener("click", function(){
+    s6pane("s6b", "Click <strong>Pages</strong> in the left menu.", "It's under “Code and automation” — that's GitHub's name for publishing tools.");
+  });
+  $("#pagesRow").addEventListener("click", function(){
+    s6pane("s6c", "Click <strong>Save</strong>.", "This tells GitHub to publish your files as a website. The branch is already correct.");
+  });
+  $("#visitSiteBtn").addEventListener("click", function(){
+    $("#livePreview").style.display="block";
+    setBar("8", "Copy your link, then click <strong>Finish</strong>.", "This is the address you'll share with the world.");
+  });
+  $("#copyLinkBtn").addEventListener("click", function(){
+    var url=$all(".js-url")[0].textContent;
+    if(navigator.clipboard){ navigator.clipboard.writeText(url).catch(function(){}); }
+    this.textContent="✓ Copied!";
+  });
+  $("#finishBtn").addEventListener("click", function(){
+    $("#outroMain").style.display="none";
+    var p=$("#donePanel"); p.style.display="flex";
+    setBar("9", "Walkthrough complete. 🎉", "");
+  });
+  $("#restartBtn").addEventListener("click", function(){
+    $("#outroMain").style.display="flex";
+    $("#donePanel").style.display="none";
+    $("#livePreview").style.display="none";
+    var cb=$("#copyLinkBtn"); if(cb) cb.textContent="⧉ Copy link";
+    showScene("s0");
+  });
+
+  /* ---------- stagger hotspot shimmer so they don't pulse in sync ---------- */
+  $all(".hs").forEach(function(el){
+    el.style.setProperty("--d", (Math.random()*2.8).toFixed(2)+"s");
+  });
+
+  /* ---------- deep-link for testing: ?scene=s3 ---------- */
+  var q=null;
+  try{ q=new URLSearchParams(window.location.search); }catch(err){}
+  var start=(q && q.get("scene")) || "s0";
+  showScene(start);
+})();
+</script>
+</body>
+</html>
